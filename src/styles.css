@@ -42,29 +42,21 @@ body {
 
 .header__brand {
   display: flex; align-items: center;
-  gap: 16px; margin-bottom: 18px;
+  gap: 20px;
 }
 
 .header__logo {
-  height: 56px; width: auto;
+  height: 64px; width: auto;
   border-radius: 8px; background: #fff; padding: 6px;
-}
-
-.header__tagline {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 800; font-size: 13px;
-  letter-spacing: 3px; text-transform: uppercase;
-  color: #7AC001;
+  flex-shrink: 0;
 }
 
 .header__title {
   font-family: 'Barlow Condensed', sans-serif;
   font-weight: 800;
-  font-size: clamp(26px, 6vw, 44px);
-  color: #fff; line-height: 1.08; letter-spacing: -0.5px;
+  font-size: clamp(22px, 5vw, 40px);
+  color: #fff; line-height: 1.1; letter-spacing: -0.5px;
 }
-
-.header__title span { color: #7AC001; }
 
 /* ===== EVENT BANNER ===== */
 .event-banner {
@@ -173,6 +165,7 @@ body {
 }
 
 .field__select--placeholder { color: #aaa; }
+.field__select--disabled { background-color: #f4f6f8; cursor: not-allowed; opacity: 0.7; }
 
 .field__error {
   color: #e74c3c; font-size: 12px;

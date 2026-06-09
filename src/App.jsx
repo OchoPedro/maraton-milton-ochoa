@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { supabase } from './supabase';
-import { DEPARTAMENTOS, MAX_CUPOS, ADMIN_PIN, EMPTY_FORM } from './data';
+import { DEPARTAMENTOS, MUNICIPIOS_POR_DEPARTAMENTO, MAX_CUPOS, ADMIN_PIN, EMPTY_FORM } from './data';
 
 /* ════════════════════════════════════════════
    APP PRINCIPAL
@@ -29,11 +29,10 @@ function Header() {
       <div className="header__inner">
         <div className="header__brand">
           <img src="/logo-milton-ochoa.png" alt="Milton Ochoa" className="header__logo" />
-          <div className="header__tagline">Expertos en Evaluación</div>
+          <h1 className="header__title">
+            Maratón del Conocimiento con Milton Ochoa
+          </h1>
         </div>
-        <h1 className="header__title">
-          Maratón del Conocimiento<br /><span>con Milton Ochoa</span>
-        </h1>
       </div>
     </header>
   );
@@ -51,17 +50,20 @@ function RegistroView({ onAdmin }) {
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    if (name === 'departamento') {
+      setForm(prev => ({ ...prev, departamento: value, municipio: '' }));
+    } else {
+      setForm(prev => ({ ...prev, [name]: value }));
+    }
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
     if (globalError) setGlobalError('');
   }
 
   function validate() {
     const e = {};
-    if (!form.nit.trim()) e.nit = 'Ingrese el NIT de la institución';
     if (!form.colegio.trim()) e.colegio = 'Ingrese el nombre del colegio';
-    if (!form.municipio.trim()) e.municipio = 'Ingrese el municipio';
     if (!form.departamento) e.departamento = 'Seleccione el departamento';
+    if (!form.municipio) e.municipio = 'Seleccione el municipio';
     if (!form.codigo_invitacion.trim()) e.codigo_invitacion = 'Ingrese el código de invitación';
     if (!form.nombre_contacto.trim()) e.nombre_contacto = 'Ingrese el nombre de contacto';
     if (!form.cargo_contacto.trim()) e.cargo_contacto = 'Ingrese el cargo';
@@ -83,10 +85,9 @@ function RegistroView({ onAdmin }) {
 
     try {
       const { error } = await supabase.from('registros').insert([{
-        nit: form.nit.trim(),
         colegio: form.colegio.trim(),
-        municipio: form.municipio.trim(),
         departamento: form.departamento,
+        municipio: form.municipio,
         codigo_invitacion: form.codigo_invitacion.trim(),
         nombre_contacto: form.nombre_contacto.trim(),
         cargo_contacto: form.cargo_contacto.trim(),
@@ -114,7 +115,7 @@ function RegistroView({ onAdmin }) {
       <div className="event-banner">
         <div className="event-banner__inner">
           <p>
-            Registro de cupos para instituciones educativas y directivos.
+            Registro de cupos para instituciones educativas.
             Complete el formulario para asegurar la participación de su institución.
           </p>
         </div>
@@ -140,15 +141,16 @@ function RegistroView({ onAdmin }) {
               <SectionHeader icon="🏫" title="Datos de la institución" />
               <div className="section-body">
                 <div className="field-grid">
-                  <FormField label="NIT Institución" name="nit" value={form.nit}
-                    onChange={handleChange} error={errors.nit} placeholder="Ej: 890.123.456-7" />
                   <FormField label="Nombre Colegio" name="colegio" value={form.colegio}
                     onChange={handleChange} error={errors.colegio}
                     placeholder="Nombre completo de la institución" full />
-                  <FormField label="Municipio" name="municipio" value={form.municipio}
-                    onChange={handleChange} error={errors.municipio} placeholder="Ej: Bucaramanga" />
                   <SelectField label="Departamento" name="departamento" value={form.departamento}
                     onChange={handleChange} error={errors.departamento} options={DEPARTAMENTOS} />
+                  <SelectField label="Municipio" name="municipio" value={form.municipio}
+                    onChange={handleChange} error={errors.municipio}
+                    options={form.departamento ? MUNICIPIOS_POR_DEPARTAMENTO[form.departamento] || [] : []}
+                    placeholder={form.departamento ? 'Seleccione municipio' : 'Primero seleccione departamento'}
+                    disabled={!form.departamento} />
                 </div>
               </div>
 
@@ -168,16 +170,16 @@ function RegistroView({ onAdmin }) {
               <SectionHeader icon="👤" title="Información de contacto" />
               <div className="section-body">
                 <div className="field-grid">
-                  <FormField label="Nombre contacto" name="nombre_contacto"
+                  <FormField label="Nombre" name="nombre_contacto"
                     value={form.nombre_contacto} onChange={handleChange}
                     error={errors.nombre_contacto} placeholder="Nombre y apellido" />
-                  <FormField label="Cargo contacto" name="cargo_contacto"
+                  <FormField label="Cargo" name="cargo_contacto"
                     value={form.cargo_contacto} onChange={handleChange}
                     error={errors.cargo_contacto} placeholder="Ej: Rector, Coordinador" />
-                  <FormField label="Número de contacto" name="numero_contacto"
+                  <FormField label="Número Telefónico" name="numero_contacto"
                     value={form.numero_contacto} onChange={handleChange}
                     error={errors.numero_contacto} placeholder="Ej: 3101234567" type="tel" />
-                  <FormField label="Correo electrónico" name="correo"
+                  <FormField label="Correo Electrónico" name="correo"
                     value={form.correo} onChange={handleChange}
                     error={errors.correo} placeholder="correo@ejemplo.com" type="email" />
                 </div>
@@ -592,7 +594,7 @@ function FormField({ label, name, value, onChange, error, placeholder, type = 't
   );
 }
 
-function SelectField({ label, name, value, onChange, error, options }) {
+function SelectField({ label, name, value, onChange, error, options, placeholder, disabled }) {
   return (
     <div>
       <label className="field__label" htmlFor={name}>
@@ -603,9 +605,10 @@ function SelectField({ label, name, value, onChange, error, options }) {
         name={name}
         value={value}
         onChange={onChange}
-        className={`field__select ${error ? 'field__select--error' : ''} ${!value ? 'field__select--placeholder' : ''}`}
+        disabled={disabled}
+        className={`field__select ${error ? 'field__select--error' : ''} ${!value ? 'field__select--placeholder' : ''} ${disabled ? 'field__select--disabled' : ''}`}
       >
-        <option value="" disabled>Seleccione departamento</option>
+        <option value="" disabled>{placeholder || `Seleccione ${label.toLowerCase()}`}</option>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
       {error && <p className="field__error">{error}</p>}
