@@ -66,19 +66,29 @@ function RegistroView({ onAdmin }) {
     setVerificando(true);
     setCodigoError('');
     try {
+      // Buscar solo por código; verificar `usado` en el resultado
+      // (separar filtros ayuda a distinguir "no existe" de "ya usado",
+      //  y evita que un valor null en `usado` cause falsos negativos)
       const { data, error } = await supabase
         .from('codigos')
         .select('id, codigo, usado')
         .eq('codigo', codigo)
-        .eq('usado', false)
         .maybeSingle();
 
-      if (error || !data) {
+      console.debug('[verificarCodigo]', { data, error });
+
+      if (error) {
+        console.error('[verificarCodigo] Supabase error:', error);
+        setCodigoError('Error al verificar el código. Intente nuevamente.');
+      } else if (!data) {
         setCodigoError('Este código no es válido o ya fue utilizado');
+      } else if (data.usado === true) {
+        setCodigoError('Este código ya fue utilizado');
       } else {
         setCodigoValidado(codigo);
       }
-    } catch {
+    } catch (err) {
+      console.error('[verificarCodigo] exception:', err);
       setCodigoError('Error de conexión. Intente nuevamente.');
     }
     setVerificando(false);
