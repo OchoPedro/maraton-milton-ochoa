@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { supabase } from './supabase';
 import { DEPARTAMENTOS, MUNICIPIOS_POR_DEPARTAMENTO, MAX_CUPOS, ADMIN_PIN, EMPTY_FORM } from './data';
@@ -42,12 +42,49 @@ function Header() {
    VISTA PÚBLICA — REGISTRO
    ════════════════════════════════════════════ */
 function RegistroView({ onAdmin }) {
+  // Paso 1: validación de código
+  const [codigoInput, setCodigoInput] = useState('');
+  const [codigoError, setCodigoError] = useState('');
+  const [verificando, setVerificando] = useState(false);
+  const [codigoValidado, setCodigoValidado] = useState(null); // string con el código aprobado
+
+  // Paso 2: formulario
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [globalError, setGlobalError] = useState('');
 
+  /* ── Paso 1: verificar código ── */
+  async function handleVerificarCodigo(e) {
+    e.preventDefault();
+    const codigo = codigoInput.trim().toUpperCase();
+    if (!codigo) {
+      setCodigoError('Ingrese el código de invitación');
+      return;
+    }
+    setVerificando(true);
+    setCodigoError('');
+    try {
+      const { data, error } = await supabase
+        .from('codigos')
+        .select('id, codigo, usado')
+        .eq('codigo', codigo)
+        .eq('usado', false)
+        .maybeSingle();
+
+      if (error || !data) {
+        setCodigoError('Este código no es válido o ya fue utilizado');
+      } else {
+        setCodigoValidado(codigo);
+      }
+    } catch {
+      setCodigoError('Error de conexión. Intente nuevamente.');
+    }
+    setVerificando(false);
+  }
+
+  /* ── Paso 2: cambios en formulario ── */
   function handleChange(e) {
     const { name, value } = e.target;
     if (name === 'departamento') {
@@ -64,7 +101,6 @@ function RegistroView({ onAdmin }) {
     if (!form.colegio.trim()) e.colegio = 'Ingrese el nombre del colegio';
     if (!form.departamento) e.departamento = 'Seleccione el departamento';
     if (!form.municipio) e.municipio = 'Seleccione el municipio';
-    if (!form.codigo_invitacion.trim()) e.codigo_invitacion = 'Ingrese el código de invitación';
     if (!form.nombre_contacto.trim()) e.nombre_contacto = 'Ingrese el nombre de contacto';
     if (!form.cargo_contacto.trim()) e.cargo_contacto = 'Ingrese el cargo';
     if (!form.numero_contacto.trim()) e.numero_contacto = 'Ingrese el número de contacto';
@@ -84,23 +120,49 @@ function RegistroView({ onAdmin }) {
     setGlobalError('');
 
     try {
-      const { error } = await supabase.from('registros').insert([{
-        colegio: form.colegio.trim(),
-        departamento: form.departamento,
-        municipio: form.municipio,
-        codigo_invitacion: form.codigo_invitacion.trim(),
-        nombre_contacto: form.nombre_contacto.trim(),
-        cargo_contacto: form.cargo_contacto.trim(),
-        numero_contacto: form.numero_contacto.trim(),
-        correo: form.correo.trim().toLowerCase(),
-      }]);
+      // 1. Insertar registro
+      const { data: nuevoRegistro, error: insertError } = await supabase
+        .from('registros')
+        .insert([{
+          colegio: form.colegio.trim(),
+          departamento: form.departamento,
+          municipio: form.municipio,
+          codigo_invitacion: codigoValidado,
+          nombre_contacto: form.nombre_contacto.trim(),
+          cargo_contacto: form.cargo_contacto.trim(),
+          numero_contacto: form.numero_contacto.trim(),
+          correo: form.correo.trim().toLowerCase(),
+        }])
+        .select('id')
+        .single();
 
-      if (error) {
+      if (insertError || !nuevoRegistro) {
         setGlobalError('Error al registrar. Intente nuevamente.');
-      } else {
-        setSubmitted(true);
-        setForm({ ...EMPTY_FORM });
+        setSubmitting(false);
+        return;
       }
+
+      const registroId = nuevoRegistro.id;
+
+      // 2. Marcar código como usado (fire-and-forget en paralelo con la edge function)
+      const markUsed = supabase
+        .from('codigos')
+        .update({ usado: true, usado_por: registroId })
+        .eq('codigo', codigoValidado);
+
+      // 3. Llamar Edge Function zoom-register
+      const callZoom = supabase.functions.invoke('zoom-register', {
+        body: {
+          nombre: form.nombre_contacto.trim(),
+          correo: form.correo.trim().toLowerCase(),
+          registro_id: registroId,
+        },
+      });
+
+      await Promise.all([markUsed, callZoom]);
+
+      setSubmitted(true);
+      setForm({ ...EMPTY_FORM });
     } catch {
       setGlobalError('Error de conexión. Intente nuevamente.');
     }
@@ -111,7 +173,6 @@ function RegistroView({ onAdmin }) {
     <>
       <Header />
 
-      {/* Descripción del evento */}
       <div className="event-banner">
         <div className="event-banner__inner">
           <p>
@@ -128,13 +189,53 @@ function RegistroView({ onAdmin }) {
             <h2 className="result-card__title result-card__title--success">¡Registro exitoso!</h2>
             <p className="result-card__text">
               Su institución ha sido inscrita en la Maratón del Conocimiento con Milton Ochoa.
-              Recibirá un correo con los detalles de confirmación.
+              Recibirá un correo con el enlace de acceso a Zoom y los detalles de confirmación.
             </p>
-            <button className="result-card__btn" onClick={() => setSubmitted(false)}>
+            <button className="result-card__btn" onClick={() => {
+              setSubmitted(false);
+              setCodigoValidado(null);
+              setCodigoInput('');
+            }}>
               Registrar otra institución
             </button>
           </div>
+        ) : !codigoValidado ? (
+          /* ── PASO 1: Verificar código ── */
+          <div className="card" style={{ maxWidth: 480, margin: '0 auto' }}>
+            <SectionHeader icon="🎟️" title="Código de invitación" />
+            <div className="section-body">
+              <p style={{ color: '#555', fontSize: 14, marginBottom: 18, lineHeight: 1.6 }}>
+                Para acceder al formulario de registro, ingrese su código de invitación.
+              </p>
+              <form onSubmit={handleVerificarCodigo}>
+                <div style={{ marginBottom: 16 }}>
+                  <label className="field__label" htmlFor="codigo_input">
+                    Código de invitación <span className="field__required">*</span>
+                  </label>
+                  <input
+                    id="codigo_input"
+                    type="text"
+                    value={codigoInput}
+                    onChange={e => { setCodigoInput(e.target.value); setCodigoError(''); }}
+                    placeholder="Ingrese su código"
+                    className={`field__input ${codigoError ? 'field__input--error' : ''}`}
+                    autoComplete="off"
+                    autoFocus
+                  />
+                  {codigoError && (
+                    <p className="field__error" style={{ fontSize: 14, marginTop: 8 }}>
+                      {codigoError}
+                    </p>
+                  )}
+                </div>
+                <button type="submit" className="submit-btn" disabled={verificando}>
+                  {verificando ? 'Verificando...' : 'Verificar código'}
+                </button>
+              </form>
+            </div>
+          </div>
         ) : (
+          /* ── PASO 2: Formulario completo ── */
           <form onSubmit={handleSubmit} noValidate>
             <div className="card">
 
@@ -156,17 +257,6 @@ function RegistroView({ onAdmin }) {
 
               <div className="section-divider" />
 
-              <SectionHeader icon="🎟️" title="Código de invitación" />
-              <div className="section-body">
-                <div className="field-grid">
-                  <FormField label="Código de invitación" name="codigo_invitacion"
-                    value={form.codigo_invitacion} onChange={handleChange}
-                    error={errors.codigo_invitacion} placeholder="Ingrese su código" />
-                </div>
-              </div>
-
-              <div className="section-divider" />
-
               <SectionHeader icon="👤" title="Información de contacto" />
               <div className="section-body">
                 <div className="field-grid">
@@ -183,6 +273,17 @@ function RegistroView({ onAdmin }) {
                     value={form.correo} onChange={handleChange}
                     error={errors.correo} placeholder="correo@ejemplo.com" type="email" />
                 </div>
+              </div>
+
+              {/* Código validado — solo lectura, informativo */}
+              <div style={{ padding: '0 24px 12px' }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  background: '#e8f5cc', color: '#3d7000', borderRadius: 8,
+                  padding: '6px 14px', fontSize: 13, fontWeight: 600,
+                }}>
+                  ✓ Código verificado: {codigoValidado}
+                </span>
               </div>
 
               {globalError && (
@@ -267,7 +368,7 @@ function AdminLogin({ onBack, onSuccess }) {
 function AdminDashboard({ onLogout }) {
   const [registros, setRegistros] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editando, setEditando] = useState(null);    // registro en edición
+  const [editando, setEditando] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [search, setSearch] = useState('');
 
@@ -310,23 +411,21 @@ function AdminDashboard({ onLogout }) {
     fetchRegistros();
   }
 
-  /* Datos para la gráfica */
   const byDepartamento = DEPARTAMENTOS.map(dep => ({
     name: dep.length > 15 ? dep.slice(0, 14) + '…' : dep,
     fullName: dep,
     count: registros.filter(r => r.departamento === dep).length,
   })).filter(d => d.count > 0).sort((a, b) => b.count - a.count);
 
-  /* Filtrar registros */
   const searchLower = search.toLowerCase();
   const filtered = search
     ? registros.filter(r =>
-        r.colegio.toLowerCase().includes(searchLower) ||
-        r.nit.toLowerCase().includes(searchLower) ||
-        r.nombre_contacto.toLowerCase().includes(searchLower) ||
-        r.departamento.toLowerCase().includes(searchLower) ||
-        r.municipio.toLowerCase().includes(searchLower) ||
-        r.correo.toLowerCase().includes(searchLower)
+        (r.colegio || '').toLowerCase().includes(searchLower) ||
+        (r.codigo_invitacion || '').toLowerCase().includes(searchLower) ||
+        (r.nombre_contacto || '').toLowerCase().includes(searchLower) ||
+        (r.departamento || '').toLowerCase().includes(searchLower) ||
+        (r.municipio || '').toLowerCase().includes(searchLower) ||
+        (r.correo || '').toLowerCase().includes(searchLower)
       )
     : registros;
 
@@ -348,7 +447,6 @@ function AdminDashboard({ onLogout }) {
     <>
       <Header />
 
-      {/* Barra admin */}
       <div className="admin-bar">
         <div className="admin-bar__inner">
           <span className="admin-bar__badge">Panel Administrador</span>
@@ -358,7 +456,6 @@ function AdminDashboard({ onLogout }) {
 
       <main className="main">
 
-        {/* ── Tarjetas de resumen ── */}
         <div className="stats-row">
           <div className="stat-card">
             <div className="stat-card__label">Total inscritos</div>
@@ -383,14 +480,11 @@ function AdminDashboard({ onLogout }) {
           </div>
         </div>
 
-        {/* ── Gráfica por departamento ── */}
         <div className="card" style={{ marginBottom: 24 }}>
           <SectionHeader icon="📊" title="Registros por departamento" />
           <div className="section-body">
             {byDepartamento.length === 0 ? (
-              <p style={{ color: '#999', textAlign: 'center', padding: 24 }}>
-                Aún no hay registros.
-              </p>
+              <p style={{ color: '#999', textAlign: 'center', padding: 24 }}>Aún no hay registros.</p>
             ) : (
               <div style={{ width: '100%', height: Math.max(300, byDepartamento.length * 38) }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -413,14 +507,13 @@ function AdminDashboard({ onLogout }) {
           </div>
         </div>
 
-        {/* ── Tabla de registros ── */}
         <div className="card">
           <SectionHeader icon="📋" title={`Listado de inscripciones (${filtered.length})`} />
           <div className="section-body" style={{ padding: '12px 24px 24px' }}>
             <input
               type="text"
               className="field__input"
-              placeholder="Buscar por colegio, NIT, contacto, municipio, departamento o correo..."
+              placeholder="Buscar por colegio, código, contacto, municipio, departamento o correo..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{ marginBottom: 16 }}
@@ -437,7 +530,6 @@ function AdminDashboard({ onLogout }) {
                     <tr>
                       <th>#</th>
                       <th>Colegio</th>
-                      <th>NIT</th>
                       <th>Municipio</th>
                       <th>Depto.</th>
                       <th>Contacto</th>
@@ -454,7 +546,6 @@ function AdminDashboard({ onLogout }) {
                       <tr key={r.id}>
                         <td>{i + 1}</td>
                         <td className="td-bold">{r.colegio}</td>
-                        <td>{r.nit}</td>
                         <td>{r.municipio}</td>
                         <td>{r.departamento}</td>
                         <td>{r.nombre_contacto}</td>
@@ -464,12 +555,8 @@ function AdminDashboard({ onLogout }) {
                         <td>{r.codigo_invitacion}</td>
                         <td className="td-date">{new Date(r.created_at).toLocaleDateString('es-CO')}</td>
                         <td className="td-actions">
-                          <button className="action-btn action-btn--edit" onClick={() => setEditando({ ...r })} title="Editar">
-                            ✏️
-                          </button>
-                          <button className="action-btn action-btn--delete" onClick={() => setConfirmDelete(r)} title="Eliminar">
-                            🗑️
-                          </button>
+                          <button className="action-btn action-btn--edit" onClick={() => setEditando({ ...r })} title="Editar">✏️</button>
+                          <button className="action-btn action-btn--delete" onClick={() => setConfirmDelete(r)} title="Eliminar">🗑️</button>
                         </td>
                       </tr>
                     ))}
@@ -481,7 +568,6 @@ function AdminDashboard({ onLogout }) {
         </div>
       </main>
 
-      {/* ── Modal Editar ── */}
       {editando && (
         <EditModal
           registro={editando}
@@ -490,13 +576,12 @@ function AdminDashboard({ onLogout }) {
         />
       )}
 
-      {/* ── Modal Confirmar Eliminar ── */}
       {confirmDelete && (
         <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h3 className="modal__title" style={{ color: '#e74c3c' }}>Confirmar eliminación</h3>
             <p style={{ margin: '12px 0 20px', fontSize: 15, lineHeight: 1.5 }}>
-              ¿Está seguro de eliminar el registro de <strong>{confirmDelete.colegio}</strong> ({confirmDelete.nit})?
+              ¿Está seguro de eliminar el registro de <strong>{confirmDelete.colegio}</strong>?
               Esta acción no se puede deshacer.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
@@ -539,15 +624,14 @@ function EditModal({ registro, onCancel, onSave }) {
         <h3 className="modal__title">Editar registro</h3>
         <form onSubmit={handleSubmit}>
           <div className="field-grid" style={{ marginTop: 16 }}>
-            <FormField label="NIT" name="nit" value={form.nit} onChange={handleChange} />
-            <FormField label="Colegio" name="colegio" value={form.colegio} onChange={handleChange} full />
-            <FormField label="Municipio" name="municipio" value={form.municipio} onChange={handleChange} />
-            <SelectField label="Departamento" name="departamento" value={form.departamento} onChange={handleChange} options={DEPARTAMENTOS} />
-            <FormField label="Código invitación" name="codigo_invitacion" value={form.codigo_invitacion} onChange={handleChange} />
-            <FormField label="Nombre contacto" name="nombre_contacto" value={form.nombre_contacto} onChange={handleChange} />
-            <FormField label="Cargo contacto" name="cargo_contacto" value={form.cargo_contacto} onChange={handleChange} />
-            <FormField label="Teléfono" name="numero_contacto" value={form.numero_contacto} onChange={handleChange} type="tel" />
-            <FormField label="Correo" name="correo" value={form.correo} onChange={handleChange} type="email" full />
+            <FormField label="Colegio" name="colegio" value={form.colegio || ''} onChange={handleChange} full />
+            <FormField label="Municipio" name="municipio" value={form.municipio || ''} onChange={handleChange} />
+            <SelectField label="Departamento" name="departamento" value={form.departamento || ''} onChange={handleChange} options={DEPARTAMENTOS} />
+            <FormField label="Código invitación" name="codigo_invitacion" value={form.codigo_invitacion || ''} onChange={handleChange} />
+            <FormField label="Nombre contacto" name="nombre_contacto" value={form.nombre_contacto || ''} onChange={handleChange} />
+            <FormField label="Cargo contacto" name="cargo_contacto" value={form.cargo_contacto || ''} onChange={handleChange} />
+            <FormField label="Teléfono" name="numero_contacto" value={form.numero_contacto || ''} onChange={handleChange} type="tel" />
+            <FormField label="Correo" name="correo" value={form.correo || ''} onChange={handleChange} type="email" full />
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 20 }}>
             <button type="button" className="btn-secondary" onClick={onCancel}>Cancelar</button>
