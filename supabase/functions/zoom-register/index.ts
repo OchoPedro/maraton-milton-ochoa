@@ -120,7 +120,7 @@ function buildEmail(nombre: string, joinUrl: string): string {
           <!-- Body -->
           <tr>
             <td style="background:#14405B;padding:40px 40px 32px;border-radius:0 0 16px 16px;">
-              <p style="margin:0 0 12px;color:#ffffff;font-size:20px;font-weight:700;">
+              <p style="margin:0 0 12px;color:#ffffff;font-size:15px;font-weight:700;">
                 ¡Hola, ${nombre}!
               </p>
               <p style="margin:0 0 24px;color:#ffffff;font-size:15px;line-height:1.7;">
@@ -128,7 +128,7 @@ function buildEmail(nombre: string, joinUrl: string): string {
                 ha sido confirmada exitosamente. Estamos muy contentos de contar con tu participación.
               </p>
 
-              <p style="margin:0 0 16px;color:#ffffff;font-size:14px;line-height:1.6;">
+              <p style="margin:0 0 16px;color:#ffffff;font-size:15px;line-height:1.6;">
                 Haz clic en el botón a continuación para unirte al evento en Zoom el día del evento:
               </p>
 
@@ -146,16 +146,16 @@ function buildEmail(nombre: string, joinUrl: string): string {
                 </tr>
               </table>
 
-              <p style="margin:0 0 8px;color:#ffffff;font-size:13px;">
+              <p style="margin:0 0 8px;color:#ffffff;font-size:15px;">
                 O copia y pega este enlace en tu navegador:
               </p>
               <p style="margin:0 0 32px;word-break:break-all;">
-                <a href="${joinUrl}" style="color:#7AC001;font-size:13px;">${joinUrl}</a>
+                <a href="${joinUrl}" style="color:#7AC001;font-size:15px;">${joinUrl}</a>
               </p>
 
               <hr style="border:none;border-top:1px solid rgba(255,255,255,0.15);margin:0 0 24px;" />
 
-              <p style="margin:0;color:rgba(255,255,255,0.5);font-size:12px;text-align:center;line-height:1.6;">
+              <p style="margin:0;color:#ffffff;font-size:15px;text-align:center;line-height:1.6;">
                 © 2026 Milton Ochoa — Expertos en Evaluación<br/>
                 Este correo fue enviado porque realizaste un registro en la Maratón del Conocimiento.
               </p>
