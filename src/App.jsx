@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { supabase } from './supabase';
-import { DEPARTAMENTOS, MUNICIPIOS_POR_DEPARTAMENTO, MAX_CUPOS, ADMIN_PIN, EMPTY_FORM } from './data';
+import { DEPARTAMENTOS, MUNICIPIOS_POR_DEPARTAMENTO, MAX_CUPOS, ADMIN_PIN, EMPTY_FORM } from './data'; 
 
 /* ════════════════════════════════════════════
    APP PRINCIPAL
