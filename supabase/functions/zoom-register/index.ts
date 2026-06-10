@@ -5,6 +5,13 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const DIAS = [
+  { label: 'Día 1', fecha: '21 de julio' },
+  { label: 'Día 2', fecha: '22 de julio' },
+  { label: 'Día 3', fecha: '23 de julio' },
+  { label: 'Día 4', fecha: '24 de julio' },
+];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS });
@@ -16,8 +23,14 @@ serve(async (req) => {
     const accountId    = Deno.env.get('ZOOM_ACCOUNT_ID')!;
     const clientId     = Deno.env.get('ZOOM_CLIENT_ID')!;
     const clientSecret = Deno.env.get('ZOOM_CLIENT_SECRET')!;
-    const meetingId    = Deno.env.get('ZOOM_MEETING_ID')!;
     const resendKey    = Deno.env.get('RESEND_API_KEY')!;
+
+    const meetingIds = [
+      Deno.env.get('ZOOM_MEETING_ID_1')!,
+      Deno.env.get('ZOOM_MEETING_ID_2')!,
+      Deno.env.get('ZOOM_MEETING_ID_3')!,
+      Deno.env.get('ZOOM_MEETING_ID_4')!,
+    ];
 
     // ── 1. Obtener token de Zoom ──
     const basicAuth = btoa(`${clientId}:${clientSecret}`);
@@ -34,26 +47,31 @@ serve(async (req) => {
     }
     const { access_token } = await tokenRes.json();
 
-    // ── 2. Registrar asistente al meeting ──
-    const regRes = await fetch(
-      `https://api.zoom.us/v2/meetings/${meetingId}/registrants`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ first_name: nombre, last_name: '.', email: correo }),
-      }
+    // ── 2. Registrar asistente en los 4 meetings en paralelo ──
+    const registrations = await Promise.all(
+      meetingIds.map(async (id) => {
+        const res = await fetch(
+          `https://api.zoom.us/v2/meetings/${id}/registrants`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ first_name: nombre, last_name: '.', email: correo }),
+          }
+        );
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(`Zoom registrant error (meeting ${id}): ${err}`);
+        }
+        const { join_url } = await res.json();
+        return join_url as string;
+      })
     );
-    if (!regRes.ok) {
-      const err = await regRes.text();
-      throw new Error(`Zoom registrant error: ${err}`);
-    }
-    const { join_url } = await regRes.json();
 
     // ── 3. Enviar correo con Resend ──
-    const emailHtml = buildEmail(nombre, join_url);
+    const emailHtml = buildEmail(nombre, registrations);
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -73,7 +91,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, join_url, registro_id }),
+      JSON.stringify({ ok: true, join_urls: registrations, registro_id }),
       { headers: { ...CORS, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
@@ -85,7 +103,28 @@ serve(async (req) => {
   }
 });
 
-function buildEmail(nombre: string, joinUrl: string): string {
+function buildEmail(nombre: string, joinUrls: string[]): string {
+  const daysHtml = DIAS.map((dia, i) => `
+              <!-- ${dia.label} -->
+              <p style="margin:0 0 6px;color:#7AC001;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">
+                ${dia.label} — ${dia.fecha}
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
+                <tr>
+                  <td style="background:linear-gradient(135deg,#7AC001 0%,#5fa000 100%);border-radius:10px;">
+                    <a
+                      href="${joinUrls[i]}"
+                      style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;letter-spacing:0.5px;"
+                    >
+                      Unirme al Zoom — ${dia.fecha}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 24px;word-break:break-all;">
+                <a href="${joinUrls[i]}" style="color:#7AC001;font-size:13px;">${joinUrls[i]}</a>
+              </p>`).join('');
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -128,30 +167,11 @@ function buildEmail(nombre: string, joinUrl: string): string {
                 ha sido confirmada exitosamente. Estamos muy contentos de contar con tu participación.
               </p>
 
-              <p style="margin:0 0 16px;color:#ffffff;font-size:15px;line-height:1.6;">
-                Haz clic en el botón a continuación para unirte al evento en Zoom el día del evento:
+              <p style="margin:0 0 20px;color:#ffffff;font-size:15px;line-height:1.6;">
+                A continuación encontrarás tu enlace personal de Zoom para cada día del evento:
               </p>
 
-              <!-- CTA button -->
-              <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
-                <tr>
-                  <td style="background:linear-gradient(135deg,#7AC001 0%,#5fa000 100%);border-radius:10px;">
-                    <a
-                      href="${joinUrl}"
-                      style="display:inline-block;padding:16px 36px;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;letter-spacing:0.5px;"
-                    >
-                      Unirme al evento Zoom
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="margin:0 0 8px;color:#ffffff;font-size:15px;">
-                O copia y pega este enlace en tu navegador:
-              </p>
-              <p style="margin:0 0 32px;word-break:break-all;">
-                <a href="${joinUrl}" style="color:#7AC001;font-size:15px;">${joinUrl}</a>
-              </p>
+              ${daysHtml}
 
               <hr style="border:none;border-top:1px solid rgba(255,255,255,0.15);margin:0 0 24px;" />
 
