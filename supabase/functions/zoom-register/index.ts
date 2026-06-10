@@ -43,7 +43,7 @@ serve(async (req) => {
           Authorization: `Bearer ${access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ first_name: nombre, email: correo }),
+        body: JSON.stringify({ first_name: nombre, last_name: '.', email: correo }),
       }
     );
     if (!regRes.ok) {
