@@ -167,12 +167,20 @@ function RegistroView({ onAdmin }) {
         .eq('codigo', codigoValidado);
 
       // 3. Llamar Edge Function zoom-register
-      const callZoom = supabase.functions.invoke('zoom-register', {
-        body: {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const callZoom = fetch(`${supabaseUrl}/functions/v1/zoom-register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
           nombre: form.nombre_contacto.trim(),
           correo: form.correo.trim().toLowerCase(),
           registro_id: registroId,
-        },
+        }),
       });
 
       await Promise.all([markUsed, callZoom]);
