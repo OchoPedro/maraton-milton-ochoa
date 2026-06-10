@@ -55,7 +55,7 @@ function RegistroView({ onAdmin }) {
   const [submitted, setSubmitted] = useState(false);
   const [globalError, setGlobalError] = useState('');
 
-  /* ── Paso 1: verificar código ── */
+  /* ── Paso 1: verificar código via Edge Function (bypassea RLS) ── */
   async function handleVerificarCodigo(e) {
     e.preventDefault();
     const codigo = codigoInput.trim().toUpperCase();
@@ -66,24 +66,21 @@ function RegistroView({ onAdmin }) {
     setVerificando(true);
     setCodigoError('');
     try {
-      // Buscar solo por código; verificar `usado` en el resultado
-      // (separar filtros ayuda a distinguir "no existe" de "ya usado",
-      //  y evita que un valor null en `usado` cause falsos negativos)
-      const { data, error } = await supabase
-        .from('codigos')
-        .select('id, codigo, usado')
-        .eq('codigo', codigo)
-        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke('verify-codigo', {
+        body: { codigo },
+      });
 
       console.debug('[verificarCodigo]', { data, error });
 
       if (error) {
-        console.error('[verificarCodigo] Supabase error:', error);
+        console.error('[verificarCodigo] invoke error:', error);
         setCodigoError('Error al verificar el código. Intente nuevamente.');
-      } else if (!data) {
-        setCodigoError('Este código no es válido o ya fue utilizado');
-      } else if (data.usado === true) {
-        setCodigoError('Este código ya fue utilizado');
+      } else if (!data?.valido) {
+        if (data?.motivo === 'ya_usado') {
+          setCodigoError('Este código ya fue utilizado');
+        } else {
+          setCodigoError('Este código no es válido o ya fue utilizado');
+        }
       } else {
         setCodigoValidado(codigo);
       }
