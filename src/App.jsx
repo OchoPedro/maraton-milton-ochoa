@@ -68,7 +68,9 @@ function RegistroView({ onAdmin }) {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const res = await fetch(`${supabaseUrl}/functions/v1/verify-codigo`, {
+      // Extraer solo el origen (https://xxx.supabase.co) descartando cualquier path
+      const supabaseOrigin = new URL(supabaseUrl).origin;
+      const res = await fetch(`${supabaseOrigin}/functions/v1/verify-codigo`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -169,7 +171,8 @@ function RegistroView({ onAdmin }) {
       // 3. Llamar Edge Function zoom-register
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const callZoom = fetch(`${supabaseUrl}/functions/v1/zoom-register`, {
+      const supabaseOrigin = new URL(supabaseUrl).origin;
+      const callZoom = fetch(`${supabaseOrigin}/functions/v1/zoom-register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
