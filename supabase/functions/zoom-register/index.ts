@@ -111,7 +111,6 @@ function buildEmail(nombre: string, joinUrl: string): string {
               <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:800;line-height:1.2;">
                 Maratón del Conocimiento con Milton Ochoa
               </h1>
-              
             </td>
           </tr>
 
