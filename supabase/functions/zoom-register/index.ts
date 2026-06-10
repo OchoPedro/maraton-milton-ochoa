@@ -61,7 +61,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Maratón Milton Ochoa <noreply@miltonochoa.com.co>',
+        from: 'Maratón Milton Ochoa <noreply@aamocolombia.com>',
         to: [correo],
         subject: '¡Tu inscripción a la Maratón del Conocimiento está confirmada!',
         html: emailHtml,
