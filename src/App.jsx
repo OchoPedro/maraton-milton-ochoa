@@ -66,14 +66,23 @@ function RegistroView({ onAdmin }) {
     setVerificando(true);
     setCodigoError('');
     try {
-      const { data, error } = await supabase.functions.invoke('verify-codigo', {
-        body: { codigo },
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(`${supabaseUrl}/functions/v1/verify-codigo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ codigo }),
       });
+      const data = await res.json();
 
-      console.debug('[verificarCodigo]', { data, error });
+      console.debug('[verificarCodigo]', { status: res.status, data });
 
-      if (error) {
-        console.error('[verificarCodigo] invoke error:', error);
+      if (!res.ok) {
+        console.error('[verificarCodigo] HTTP error:', res.status, data);
         setCodigoError('Error al verificar el código. Intente nuevamente.');
       } else if (!data?.valido) {
         if (data?.motivo === 'ya_usado') {
