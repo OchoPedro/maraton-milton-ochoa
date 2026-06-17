@@ -41,7 +41,7 @@ export const MUNICIPIOS_POR_DEPARTAMENTO = {
   'Vichada': ['Puerto Carreño','Cumaribo','La Primavera','Santa Rosalía'],
 };
 
-export const MAX_CUPOS = 1150;
+export const MAX_CUPOS = 1000;
 
 export const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || '0000';
 
