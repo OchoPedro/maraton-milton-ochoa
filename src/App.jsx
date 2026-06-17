@@ -426,6 +426,7 @@ function AdminDashboard({ onLogout }) {
   }
 
   async function handleDelete(id) {
+    await supabase.from('codigos').update({ usado: false, usado_por: null }).eq('usado_por', id);
     await supabase.from('registros').delete().eq('id', id);
     setConfirmDelete(null);
     fetchRegistros();
