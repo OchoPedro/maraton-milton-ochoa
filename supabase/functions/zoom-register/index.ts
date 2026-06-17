@@ -106,12 +106,12 @@ serve(async (req) => {
 function buildEmail(nombre: string, joinUrls: string[]): string {
   const daysHtml = DIAS.map((dia, i) => `
               <!-- ${dia.label} -->
-              <p style="margin:0 0 6px;color:#7AC001;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">
+              <p style="margin:0 0 6px;color:#2D9B6F;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">
                 ${dia.label} — ${dia.fecha}
               </p>
               <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
                 <tr>
-                  <td style="background:linear-gradient(135deg,#7AC001 0%,#5fa000 100%);border-radius:10px;">
+                  <td style="background:linear-gradient(135deg,#2D9B6F 0%,#1e7a55 100%);border-radius:10px;">
                     <a
                       href="${joinUrls[i]}"
                       style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;letter-spacing:0.5px;"
@@ -122,7 +122,7 @@ function buildEmail(nombre: string, joinUrls: string[]): string {
                 </tr>
               </table>
               <p style="margin:0 0 24px;word-break:break-all;">
-                <a href="${joinUrls[i]}" style="color:#7AC001;font-size:13px;">${joinUrls[i]}</a>
+                <a href="${joinUrls[i]}" style="color:#2D9B6F;font-size:13px;">${joinUrls[i]}</a>
               </p>`).join('');
 
   return `<!DOCTYPE html>
@@ -132,15 +132,15 @@ function buildEmail(nombre: string, joinUrls: string[]): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Confirmación de inscripción</title>
 </head>
-<body style="margin:0;padding:0;background:#14405B;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#14405B;padding:32px 0;">
+<body style="margin:0;padding:0;background:#0A1F3D;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0A1F3D;padding:32px 0;">
     <tr>
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
           <!-- Header -->
           <tr>
-            <td style="background:linear-gradient(135deg,#14405B 0%,#0d2d40 100%);border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
+            <td style="background:linear-gradient(135deg,#0A1F3D 0%,#061530 100%);border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
               <img
                 src="https://maraton-milton-ochoa.vercel.app/logo-milton-ochoa.png"
                 alt="Milton Ochoa"
@@ -158,7 +158,7 @@ function buildEmail(nombre: string, joinUrls: string[]): string {
 
           <!-- Body -->
           <tr>
-            <td style="background:#14405B;padding:40px 40px 32px;border-radius:0 0 16px 16px;">
+            <td style="background:#0A1F3D;padding:40px 40px 32px;border-radius:0 0 16px 16px;">
               <p style="margin:0 0 12px;color:#ffffff;font-size:15px;font-weight:700;">
                 ¡Hola, ${nombre}!
               </p>

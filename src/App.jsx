@@ -306,7 +306,7 @@ function RegistroView({ onAdmin }) {
               <div style={{ padding: '0 24px 12px' }}>
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  background: '#e8f5cc', color: '#3d7000', borderRadius: 8,
+                  background: '#d0f0e3', color: '#1e7a55', borderRadius: 8,
                   padding: '6px 14px', fontSize: 13, fontWeight: 600,
                 }}>
                   ✓ Código verificado: {codigoValidado}
@@ -469,7 +469,7 @@ function AdminDashboard({ onLogout }) {
     );
   }
 
-  const BAR_COLORS = ['#7AC001', '#5fa000', '#14405B', '#1b5a7e', '#2980b9', '#27ae60'];
+  const BAR_COLORS = ['#2D9B6F', '#1e7a55', '#0A1F3D', '#0A1F3D', '#2980b9', '#27ae60'];
 
   return (
     <>
@@ -487,7 +487,7 @@ function AdminDashboard({ onLogout }) {
         <div className="stats-row">
           <div className="stat-card">
             <div className="stat-card__label">Total inscritos</div>
-            <div className="stat-card__value" style={{ color: '#7AC001' }}>{total}</div>
+            <div className="stat-card__value" style={{ color: '#2D9B6F' }}>{total}</div>
             <div className="stat-card__sub">de {MAX_CUPOS} cupos</div>
             <div className="progress__bar" style={{ marginTop: 10 }}>
               <div
@@ -498,12 +498,12 @@ function AdminDashboard({ onLogout }) {
           </div>
           <div className="stat-card">
             <div className="stat-card__label">Cupos disponibles</div>
-            <div className="stat-card__value" style={{ color: '#14405B' }}>{MAX_CUPOS - total}</div>
+            <div className="stat-card__value" style={{ color: '#0A1F3D' }}>{MAX_CUPOS - total}</div>
             <div className="stat-card__sub">{pct.toFixed(1)}% ocupado</div>
           </div>
           <div className="stat-card">
             <div className="stat-card__label">Departamentos</div>
-            <div className="stat-card__value" style={{ color: '#14405B' }}>{byDepartamento.length}</div>
+            <div className="stat-card__value" style={{ color: '#0A1F3D' }}>{byDepartamento.length}</div>
             <div className="stat-card__sub">con registros</div>
           </div>
         </div>
