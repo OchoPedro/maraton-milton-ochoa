@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import * as XLSX from 'xlsx';
 import { supabase } from './supabase';
-import { DEPARTAMENTOS, MUNICIPIOS_POR_DEPARTAMENTO, MAX_CUPOS, ADMIN_PIN, EMPTY_FORM } from './data'; 
+import { DEPARTAMENTOS, MUNICIPIOS_POR_DEPARTAMENTO, MAX_CUPOS, ADMIN_PIN, EMPTY_FORM } from './data';
 
 /* ════════════════════════════════════════════
    APP PRINCIPAL
@@ -425,6 +426,101 @@ function AdminDashboard({ onLogout }) {
     setLoading(false);
   }
 
+  function exportarExcel() {
+    const AZUL  = '0A1F3D';
+    const VERDE = '2D9B6F';
+    const BLANCO = 'FFFFFF';
+    const GRIS  = 'F0F4F8';
+
+    const encabezados = [
+      '#', 'Colegio', 'Municipio', 'Departamento',
+      'Nombre Contacto', 'Cargo', 'Teléfono', 'Correo',
+      'Código', 'Fecha de Registro',
+    ];
+
+    const filas = registros.map((r, i) => [
+      i + 1,
+      r.colegio,
+      r.municipio,
+      r.departamento,
+      r.nombre_contacto,
+      r.cargo_contacto,
+      r.numero_contacto,
+      r.correo,
+      r.codigo_invitacion,
+      new Date(r.created_at).toLocaleDateString('es-CO'),
+    ]);
+
+    // Fila de título
+    const titulo = [`Maratón del Conocimiento — Inscritos (${registros.length} de ${MAX_CUPOS})`];
+    const datos = [titulo, [], encabezados, ...filas];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(datos);
+
+    // Anchos de columna
+    ws['!cols'] = [
+      { wch: 5 }, { wch: 36 }, { wch: 20 }, { wch: 22 },
+      { wch: 22 }, { wch: 18 }, { wch: 16 }, { wch: 30 },
+      { wch: 16 }, { wch: 18 },
+    ];
+
+    // Merge para el título (fila 1, cols A-J)
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }];
+
+    // Estilo celda título
+    const celdaTitulo = ws['A1'];
+    if (celdaTitulo) {
+      celdaTitulo.s = {
+        font: { bold: true, sz: 14, color: { rgb: BLANCO }, name: 'Calibri' },
+        fill: { fgColor: { rgb: AZUL } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+      };
+    }
+
+    // Estilos encabezados (fila 3)
+    encabezados.forEach((_, ci) => {
+      const ref = XLSX.utils.encode_cell({ r: 2, c: ci });
+      if (!ws[ref]) return;
+      ws[ref].s = {
+        font: { bold: true, sz: 11, color: { rgb: BLANCO }, name: 'Calibri' },
+        fill: { fgColor: { rgb: VERDE } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        border: {
+          bottom: { style: 'thin', color: { rgb: BLANCO } },
+          right:  { style: 'thin', color: { rgb: BLANCO } },
+        },
+      };
+    });
+
+    // Estilos filas de datos (alternadas)
+    filas.forEach((_, ri) => {
+      const rowIdx = ri + 3;
+      const esPar = ri % 2 === 0;
+      encabezados.forEach((__, ci) => {
+        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: ci });
+        if (!ws[ref]) return;
+        ws[ref].s = {
+          font: { sz: 10, name: 'Calibri', color: { rgb: ci === 0 ? VERDE : '1A1A2E' } },
+          fill: { fgColor: { rgb: esPar ? GRIS : BLANCO } },
+          alignment: {
+            horizontal: ci === 0 ? 'center' : 'left',
+            vertical: 'center',
+            wrapText: ci === 1,
+          },
+          border: {
+            bottom: { style: 'hair', color: { rgb: 'CCCCCC' } },
+            right:  { style: 'hair', color: { rgb: 'CCCCCC' } },
+          },
+        };
+      });
+    });
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Inscritos');
+    const fecha = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `maraton-inscritos-${fecha}.xlsx`);
+  }
+
   async function handleDelete(id) {
     await supabase.from('codigos').update({ usado: false, usado_por: null }).eq('usado_por', id);
     await supabase.from('registros').delete().eq('id', id);
@@ -538,14 +634,31 @@ function AdminDashboard({ onLogout }) {
         <div className="card">
           <SectionHeader icon="📋" title={`Listado de inscripciones (${filtered.length})`} />
           <div className="section-body" style={{ padding: '12px 24px 24px' }}>
-            <input
-              type="text"
-              className="field__input"
-              placeholder="Buscar por colegio, código, contacto, municipio, departamento o correo..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ marginBottom: 16 }}
-            />
+            <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+              <input
+                type="text"
+                className="field__input"
+                placeholder="Buscar por colegio, código, contacto, municipio, departamento o correo..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ marginBottom: 0, flex: 1 }}
+              />
+              <button
+                onClick={exportarExcel}
+                disabled={registros.length === 0}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: '#0A1F3D', color: '#fff',
+                  border: 'none', borderRadius: 8,
+                  padding: '10px 18px', fontWeight: 700, fontSize: 13,
+                  cursor: registros.length === 0 ? 'not-allowed' : 'pointer',
+                  opacity: registros.length === 0 ? 0.5 : 1,
+                  whiteSpace: 'nowrap', flexShrink: 0,
+                }}
+              >
+                ⬇ Descargar Excel
+              </button>
+            </div>
 
             {filtered.length === 0 ? (
               <p style={{ color: '#999', textAlign: 'center', padding: 24 }}>
