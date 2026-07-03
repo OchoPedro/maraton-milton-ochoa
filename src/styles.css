@@ -402,6 +402,8 @@ body {
 /* Table */
 .table-wrap {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 830px;
   margin: 0 -24px;
   padding: 0 24px;
 }
@@ -413,6 +415,9 @@ body {
 
 .admin-table thead {
   background: #0A1F3D;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .admin-table th {
@@ -431,6 +436,7 @@ body {
   padding: 10px 12px;
   border-bottom: 1px solid #f0f0f0;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .admin-table tbody tr:hover {
