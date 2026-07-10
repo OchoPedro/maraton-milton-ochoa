@@ -156,7 +156,11 @@ function RegistroView({ onAdmin }) {
         .single();
 
       if (insertError || !nuevoRegistro) {
-        setGlobalError('Error al registrar. Intente nuevamente.');
+        if (insertError?.code === '23505') {
+          setGlobalError('Este código de invitación ya fue utilizado por otro registro.');
+        } else {
+          setGlobalError('Error al registrar. Intente nuevamente.');
+        }
         setSubmitting(false);
         return;
       }
