@@ -1,0 +1,35 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "maraton-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "maraton-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview", "--", "--port", "4173"],
+      "port": 4173
+    },
+    {
+      "name": "plataforma-interna-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "/Users/ochoapedro/Downloads/plataforma-interna", "run", "dev", "--", "--port", "5175"],
+      "port": 5175
+    },
+    {
+      "name": "portal-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "/Users/ochoapedro/Downloads/portal", "run", "dev", "--", "--port", "5176"],
+      "port": 5176
+    },
+    {
+      "name": "preguntados-web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["-y", "http-server", "/Users/ochoapedro/Downloads/preguntados-milton-ochoa/build/web", "-p", "8787", "-c-1"],
+      "port": 8787
+    }
+  ]
+}

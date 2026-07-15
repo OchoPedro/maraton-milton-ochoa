@@ -1,6 +1,6 @@
 # Maratón del Conocimiento con Milton Ochoa — Registro de Cupos
 
-Página de inscripción para instituciones educativas. Capacidad: 1,150 cupos.
+Página de inscripción para instituciones educativas. Capacidad: 1,000 cupos.
 
 ## Stack
 - **Frontend:** React 18 + Vite 5 + Recharts
@@ -16,7 +16,6 @@ En tu proyecto de Supabase, ve al **SQL Editor** y ejecuta:
 ```sql
 CREATE TABLE registros (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nit TEXT NOT NULL,
   colegio TEXT NOT NULL,
   municipio TEXT NOT NULL,
   departamento TEXT NOT NULL,
@@ -27,6 +26,17 @@ CREATE TABLE registros (
   correo TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Códigos de invitación: cada registro consume un código (usado=true, usado_por=id del registro).
+-- La app valida el código en el registro y lo libera (usado=false) si se elimina el registro.
+CREATE TABLE codigos (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  codigo TEXT NOT NULL UNIQUE,
+  usado BOOLEAN NOT NULL DEFAULT false,
+  usado_por BIGINT REFERENCES registros(id)
+);
+ALTER TABLE codigos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Permitir validar y consumir códigos" ON codigos FOR ALL USING (true) WITH CHECK (true);
 
 -- Habilitar Realtime para la tabla
 ALTER PUBLICATION supabase_realtime ADD TABLE registros;

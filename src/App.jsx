@@ -82,8 +82,6 @@ function RegistroView({ onAdmin }) {
       });
       const data = await res.json();
 
-      console.debug('[verificarCodigo]', { status: res.status, data });
-
       if (!res.ok) {
         console.error('[verificarCodigo] HTTP error:', res.status, data);
         setCodigoError('Error al verificar el código. Intente nuevamente.');
